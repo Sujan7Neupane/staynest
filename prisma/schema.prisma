@@ -14,11 +14,62 @@ enum UserRole {
 }
 
 model User {
-  id           String   @id @default(cuid())
+  id           String     @id @default(cuid())
   name         String
-  email        String   @unique
+  email        String     @unique
   passwordHash String
   role         UserRole
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  properties   Property[]
+}
+
+enum PropertyType {
+  HOTEL
+  VACATION_RENTAL
+}
+
+enum PropertyStatus {
+  DRAFT
+  PUBLISHED
+  UNPUBLISHED
+}
+
+model Property {
+  id          String       @id @default(cuid())
+  title       String
+  description String
+  type        PropertyType
+
+  address String
+  city    String
+  country String
+
+  pricePerNight Decimal        @db.Decimal(10, 2)
+  maxGuests     Int
+  bedrooms      Int
+  bathrooms     Int
+  status        PropertyStatus @default(DRAFT)
+
+  hostId String
+  host   User   @relation(fields: [hostId], references: [id], onDelete: Cascade)
+
+  images PropertyImage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PropertyImage {
+  id       String @id @default(cuid())
+  url      String
+  publicId String @unique
+
+  altText  String?
+  position Int     @default(0)
+
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
 }
