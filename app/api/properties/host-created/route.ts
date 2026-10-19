@@ -24,18 +24,6 @@ export async function GET() {
       where: {
         hostId: session.user.id,
       },
-      include: {
-        images: {
-          orderBy: {
-            position: "asc",
-          },
-          omit: {
-            publicId: true,
-            propertyId: true,
-            createdAt: true,
-          },
-        },
-      },
       omit: {
         hostId: true,
         createdAt: true,
@@ -55,7 +43,7 @@ export async function GET() {
 
     return NextResponse.json({ properties });
   } catch (error) {
-    // console.error("Fetch host properties error:", error);
+    console.error("Fetch host properties error:", error);
 
     return NextResponse.json(
       { message: "Failed to fetch your properties" },

@@ -22,6 +22,7 @@ model User {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   properties   Property[]
+  bookings     Booking[]
 }
 
 enum PropertyType {
@@ -60,4 +61,72 @@ model Property {
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
   cancellationDeadlineDays Int      @default(2)
+
+  bookings Booking[]
+  rooms    Room[]
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum RoomStatus {
+  AVAILABLE
+  MAINTENANCE
+  UNAVAILABLE
+}
+
+model Room {
+  id            String     @id @default(cuid())
+  roomNumber    String
+  name          String
+  description   String?
+  pricePerNight Decimal    @db.Decimal(10, 2)
+  maxGuests     Int
+  status        RoomStatus @default(AVAILABLE)
+
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  bookings Booking[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([propertyId, roomNumber])
+}
+
+model Booking {
+  id       String   @id @default(cuid())
+  checkIn  DateTime
+  checkOut DateTime
+  guests   Int
+
+  pricePerNight Decimal @db.Decimal(10, 2)
+  totalPrice    Decimal @db.Decimal(10, 2)
+
+  status        BookingStatus @default(PENDING)
+  paymentStatus PaymentStatus @default(PENDING)
+
+  guestId String
+  guest   User   @relation(fields: [guestId], references: [id], onDelete: Restrict)
+
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+
+  roomId String?
+  room   Room?   @relation(fields: [roomId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
