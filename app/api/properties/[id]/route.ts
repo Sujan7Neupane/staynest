@@ -14,9 +14,6 @@ export async function GET(request: Request, { params }: RouteParams) {
   try {
     const property = await prisma.property.findUnique({
       where: { id },
-      include: {
-        images: { orderBy: { position: "asc" } },
-      },
     });
 
     if (!property) {
@@ -29,6 +26,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     return NextResponse.json({ property });
   } catch (error) {
     console.error(error);
+
     return NextResponse.json(
       { message: "Something went wrong" },
       { status: 500 },
@@ -67,7 +65,10 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     }
 
     const property = await prisma.property.findFirst({
-      where: { id, hostId: session.user.id },
+      where: {
+        id,
+        hostId: session.user.id,
+      },
     });
 
     if (!property) {
@@ -85,6 +86,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     return NextResponse.json({ property: updatedProperty });
   } catch (error) {
     console.error(error);
+
     return NextResponse.json(
       { message: "Something went wrong" },
       { status: 500 },
@@ -106,8 +108,10 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     const { id } = await params;
 
     const property = await prisma.property.findFirst({
-      where: { id, hostId: session.user.id },
-      include: { images: true },
+      where: {
+        id,
+        hostId: session.user.id,
+      },
     });
 
     if (!property) {
@@ -117,19 +121,24 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       );
     }
 
-    await prisma.property.delete({ where: { id } });
+    await prisma.property.delete({
+      where: { id },
+    });
 
-    for (const image of property.images) {
+    if (property.imagePublicId) {
       try {
-        await cloudinary.uploader.destroy(image.publicId);
+        await cloudinary.uploader.destroy(property.imagePublicId);
       } catch (error) {
-        console.error(error);
+        console.error("Failed to delete Cloudinary image:", error);
       }
     }
 
-    return NextResponse.json({ message: "Property deleted successfully" });
+    return NextResponse.json({
+      message: "Property deleted successfully",
+    });
   } catch (error) {
     console.error(error);
+
     return NextResponse.json(
       { message: "Something went wrong" },
       { status: 500 },

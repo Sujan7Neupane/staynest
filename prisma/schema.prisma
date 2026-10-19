@@ -54,22 +54,10 @@ model Property {
   hostId String
   host   User   @relation(fields: [hostId], references: [id], onDelete: Cascade)
 
-  images PropertyImage[]
+  imageUrl      String?
+  imagePublicId String? @unique
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model PropertyImage {
-  id       String @id @default(cuid())
-  url      String
-  publicId String @unique
-
-  altText  String?
-  position Int     @default(0)
-
-  propertyId String
-  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+  cancellationDeadlineDays Int      @default(2)
 }

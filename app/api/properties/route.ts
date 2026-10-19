@@ -64,57 +64,36 @@ export async function POST(request: Request) {
       );
     }
 
-    const images = formData.getAll("images");
-    // console.log(images);
+    // Get one image instead of an array of images
+    const image = formData.get("image");
 
-    const uploadedImages = [];
+    let imageUrl: string | null = null;
+    let imagePublicId: string | null = null;
 
-    if (images.length > 3) {
-      return NextResponse.json(
-        { message: "Maximum 3 images allowed" },
-        { status: 400 },
-      );
+    if (image !== null && !(image instanceof File)) {
+      return NextResponse.json({ message: "Invalid image" }, { status: 400 });
     }
 
-    for (let i = 0; i < images.length; i++) {
-      const image = images[i];
-
-      if (!(image instanceof File) || image.size === 0) {
-        continue;
-      }
-
+    if (image instanceof File && image.size > 0) {
       const uploadedImage = await cloudinaryUpload(image);
 
-      uploadedImages.push({
-        url: uploadedImage.secure_url,
-        publicId: uploadedImage.public_id,
-        position: uploadedImages.length,
-      });
+      imageUrl = uploadedImage.secure_url;
+      imagePublicId = uploadedImage.public_id;
     }
+
     const property = await prisma.property.create({
       data: {
         ...result.data,
         hostId: session.user.id,
-        images: {
-          create: uploadedImages,
-        },
+        imageUrl,
+        imagePublicId,
       },
       omit: {
         hostId: true,
         createdAt: true,
         updatedAt: true,
       },
-      include: {
-        images: {
-          omit: {
-            publicId: true,
-            propertyId: true,
-            createdAt: true,
-          },
-        },
-      },
     });
-    // console.log(property);
 
     return NextResponse.json(
       { message: "Property created successfully", property },
@@ -149,15 +128,13 @@ export async function GET(request: Request) {
         city: city ? { equals: city, mode: "insensitive" } : undefined,
         type: type ? (type as "HOTEL" | "VACATION_RENTAL") : undefined,
       },
-      include: {
-        images: { orderBy: { position: "asc" } },
-      },
       orderBy: { createdAt: "desc" },
     });
 
     return NextResponse.json({ properties });
   } catch (error) {
     console.error(error);
+
     return NextResponse.json(
       { message: "Something went wrong" },
       { status: 500 },
