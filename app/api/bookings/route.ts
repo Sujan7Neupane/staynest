@@ -3,6 +3,74 @@ import { auth } from "@/auth";
 import prisma from "../../../prisma/client";
 import { bookingSchema } from "../../../lib/zodValidations/booking";
 
+export async function GET() {
+  const session = await auth();
+
+  if (!session?.user) {
+    return NextResponse.json(
+      { message: "Please log in first" },
+      { status: 401 },
+    );
+  }
+
+  try {
+    let where = {};
+
+    if (session.user.role === "GUEST") {
+      where = {
+        guestId: session.user.id,
+      };
+    } else if (session.user.role === "HOST") {
+      where = {
+        property: {
+          hostId: session.user.id,
+        },
+      };
+    }
+
+    const bookings = await prisma.booking.findMany({
+      where,
+      include: {
+        property: {
+          select: {
+            id: true,
+            title: true,
+            city: true,
+            country: true,
+            imageUrl: true,
+          },
+        },
+        room: {
+          select: {
+            id: true,
+            roomNumber: true,
+            name: true,
+          },
+        },
+        guest: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return NextResponse.json({ bookings }, { status: 200 });
+  } catch (error) {
+    console.error("Fetching bookings error:", error);
+
+    return NextResponse.json(
+      { message: "Failed to fetch bookings" },
+      { status: 500 },
+    );
+  }
+}
+
 export async function POST(request: Request) {
   const session = await auth();
 

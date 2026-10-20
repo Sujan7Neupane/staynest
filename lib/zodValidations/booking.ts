@@ -12,3 +12,7 @@ export const bookingSchema = z
     message: "Check-out must be after check-in",
     path: ["checkOut"],
   });
+
+export const cancelBookingSchema = z.object({
+  status: z.literal("CANCELLED"),
+});
