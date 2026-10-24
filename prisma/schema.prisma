@@ -118,6 +118,10 @@ model Booking {
   status        BookingStatus @default(PENDING)
   paymentStatus PaymentStatus @default(PENDING)
 
+  transactionUuid  String?   @unique
+  paymentReference String?   @unique
+  paidAt           DateTime?
+
   guestId String
   guest   User   @relation(fields: [guestId], references: [id], onDelete: Restrict)
 
