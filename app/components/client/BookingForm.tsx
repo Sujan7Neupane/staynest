@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
@@ -29,7 +29,11 @@ export default function BookingForm({
   rooms,
 }: BookingFormProps) {
   const router = useRouter();
+
   const [serverError, setServerError] = useState("");
+  const [unavailableRoomIds, setUnavailableRoomIds] = useState<string[]>([]);
+  const [propertyUnavailable, setPropertyUnavailable] = useState(false);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
 
   const {
     register,
@@ -45,8 +49,61 @@ export default function BookingForm({
   const checkIn = watch("checkIn");
   const checkOut = watch("checkOut");
 
-  const availableRooms = rooms.filter((room) => room.status === "AVAILABLE");
   const selectedRoom = rooms.find((room) => room.id === roomId);
+
+  const selectedRoomUnavailable =
+    isHotel &&
+    (!selectedRoom ||
+      selectedRoom.status !== "AVAILABLE" ||
+      unavailableRoomIds.includes(selectedRoom.id));
+
+  const stayUnavailable = isHotel
+    ? selectedRoomUnavailable
+    : propertyUnavailable;
+
+  useEffect(() => {
+    setUnavailableRoomIds([]);
+    setPropertyUnavailable(false);
+
+    if (!checkIn || !checkOut || checkOut <= checkIn) {
+      setCheckingAvailability(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function checkAvailability() {
+      setCheckingAvailability(true);
+
+      try {
+        const response = await axios.get(`/api/properties/${propertyId}`, {
+          params: { checkIn, checkOut },
+        });
+
+        if (!cancelled) {
+          setUnavailableRoomIds(response.data.unavailableRoomIds ?? []);
+          setPropertyUnavailable(response.data.propertyUnavailable ?? false);
+        }
+      } catch {
+        if (!cancelled) {
+          // Do not allow booking when availability cannot be verified.
+          setUnavailableRoomIds(rooms.map((room) => room.id));
+          setPropertyUnavailable(true);
+          setServerError("Could not check availability. Please try again.");
+        }
+      } finally {
+        if (!cancelled) {
+          setCheckingAvailability(false);
+        }
+      }
+    }
+
+    void checkAvailability();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [propertyId, checkIn, checkOut, rooms]);
 
   const pricePerNight = isHotel
     ? Number(selectedRoom?.pricePerNight ?? 0)
@@ -60,15 +117,26 @@ export default function BookingForm({
   const nights =
     checkIn && checkOut
       ? Math.round(
-          (new Date(checkOut).getTime() - new Date(checkIn).getTime()) / oneDay,
+          (new Date(`${checkOut}T00:00:00`).getTime() -
+            new Date(`${checkIn}T00:00:00`).getTime()) /
+            oneDay,
         )
       : 0;
 
   const totalPrice = nights > 0 ? pricePerNight * nights : 0;
-  const today = new Date().toLocaleDateString("en-CA");
+  const [today, setToday] = useState("");
+
+  useEffect(() => {
+    setToday(new Date().toLocaleDateString("en-CA"));
+  }, []);
 
   async function onSubmit(values: FormValues) {
     setServerError("");
+
+    if (checkingAvailability || stayUnavailable) {
+      setServerError("Please select an available stay and dates.");
+      return;
+    }
 
     try {
       const response = await axios.post("/api/bookings", {
@@ -93,6 +161,8 @@ export default function BookingForm({
     }
   }
 
+  const availableRooms = rooms.filter((room) => room.status === "AVAILABLE");
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-5">
       {isHotel && (
@@ -107,12 +177,24 @@ export default function BookingForm({
             className="w-full rounded-lg border border-gray-300 px-3 py-3"
           >
             <option value="">Choose a room</option>
-            {availableRooms.map((room) => (
-              <option key={room.id} value={room.id}>
-                {room.name} — Room {room.roomNumber} (
-                {Number(room.pricePerNight).toFixed(2)} / night)
-              </option>
-            ))}
+
+            {rooms.map((room) => {
+              const booked = unavailableRoomIds.includes(room.id);
+              const unavailable = room.status !== "AVAILABLE" || booked;
+              //   console.log(room);
+
+              return (
+                <option key={room.id} value={room.id} disabled={unavailable}>
+                  {room.name} — Room {room.roomNumber} (
+                  {Number(room.pricePerNight).toFixed(2)} / night)
+                  {booked
+                    ? " — Booked for these dates"
+                    : room.status !== "AVAILABLE"
+                      ? " — Unavailable"
+                      : ""}
+                </option>
+              );
+            })}
           </select>
 
           {availableRooms.length === 0 && (
@@ -120,6 +202,7 @@ export default function BookingForm({
               No rooms are currently listed as available.
             </p>
           )}
+
           {errors.roomId && (
             <p className="mt-2 text-sm text-red-600">{errors.roomId.message}</p>
           )}
@@ -151,7 +234,7 @@ export default function BookingForm({
         <input
           id="checkOut"
           type="date"
-          min={checkIn || today}
+          min={checkIn ? (checkIn >= today ? checkIn : today) : today}
           {...register("checkOut", {
             required: "Please select a check-out date.",
             validate: (value) =>
@@ -171,12 +254,13 @@ export default function BookingForm({
         <input
           id="guests"
           type="number"
+          min={1}
+          max={maxGuests || propertyMaxGuests}
           {...register("guests", {
             valueAsNumber: true,
             min: { value: 1, message: "At least one guest is required." },
             validate: (value) =>
-              maxGuests === 0 ||
-              value <= maxGuests ||
+              (maxGuests > 0 && value <= maxGuests) ||
               `Maximum guests allowed: ${maxGuests}.`,
           })}
           className="w-full rounded-lg border border-gray-300 px-3 py-3"
@@ -196,6 +280,18 @@ export default function BookingForm({
         </p>
       </div>
 
+      {checkingAvailability && (
+        <p className="text-sm text-gray-500">Checking availability...</p>
+      )}
+
+      {!checkingAvailability && stayUnavailable && checkIn && checkOut && (
+        <p className="text-sm text-red-600">
+          {isHotel
+            ? "This room is unavailable for your selected dates. Please choose another room or dates."
+            : "This property is unavailable for your selected dates."}
+        </p>
+      )}
+
       {serverError && (
         <p role="alert" className="text-sm text-red-600">
           {serverError}
@@ -204,10 +300,24 @@ export default function BookingForm({
 
       <button
         type="submit"
-        disabled={isSubmitting}
+        disabled={
+          isSubmitting ||
+          checkingAvailability ||
+          stayUnavailable ||
+          !checkIn ||
+          !checkOut ||
+          nights <= 0 ||
+          (isHotel && !roomId)
+        }
         className="w-full rounded-lg bg-blue-600 px-4 py-3 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {isSubmitting ? "Creating booking..." : "Continue to payment"}
+        {isSubmitting
+          ? "Creating booking..."
+          : checkingAvailability
+            ? "Checking availability..."
+            : stayUnavailable
+              ? "Unavailable for these dates"
+              : "Continue to payment"}
       </button>
     </form>
   );

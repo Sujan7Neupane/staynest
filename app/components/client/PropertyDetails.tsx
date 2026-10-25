@@ -8,6 +8,7 @@ type PropertyDetailsProps = {
 };
 
 export default async function PropertyDetails({ id }: PropertyDetailsProps) {
+  "use cache";
   const property = await prisma.property.findUnique({
     where: { id },
     include: {

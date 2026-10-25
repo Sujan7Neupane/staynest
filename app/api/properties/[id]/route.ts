@@ -10,20 +10,86 @@ type RouteParams = {
 
 export async function GET(request: Request, { params }: RouteParams) {
   const { id } = await params;
+  const { searchParams } = new URL(request.url);
+
+  const checkIn = searchParams.get("checkIn");
+  const checkOut = searchParams.get("checkOut");
 
   try {
     const property = await prisma.property.findUnique({
       where: { id },
+      include: {
+        rooms: {
+          orderBy: { roomNumber: "asc" },
+        },
+      },
     });
 
-    if (!property) {
+    if (!property || property.status !== "PUBLISHED") {
       return NextResponse.json(
         { message: "Property not found" },
         { status: 404 },
       );
     }
 
-    return NextResponse.json({ property });
+    let unavailableRoomIds: string[] = [];
+    let propertyUnavailable = false;
+
+    if (checkIn && checkOut) {
+      const startDate = new Date(`${checkIn}T00:00:00.000Z`);
+      const endDate = new Date(`${checkOut}T00:00:00.000Z`);
+
+      if (
+        Number.isNaN(startDate.getTime()) ||
+        Number.isNaN(endDate.getTime()) ||
+        endDate <= startDate ||
+        startDate.toISOString().slice(0, 10) !== checkIn ||
+        endDate.toISOString().slice(0, 10) !== checkOut
+      ) {
+        return NextResponse.json(
+          { message: "Invalid booking dates" },
+          { status: 400 },
+        );
+      }
+
+      const overlappingBookings = await prisma.booking.findMany({
+        where: {
+          propertyId: id,
+          roomId: {
+            in: property.rooms.map((room) => room.id),
+          },
+          status: {
+            in: ["PENDING", "CONFIRMED"],
+          },
+          checkIn: { lt: endDate },
+          checkOut: { gt: startDate },
+        },
+        select: {
+          id: true,
+          roomId: true,
+          status: true,
+          checkIn: true,
+          checkOut: true,
+          holdExpiresAt: true,
+        },
+      });
+
+      // console.log("Matching bookings:", overlappingBookings);
+
+      if (property.type === "HOTEL") {
+        unavailableRoomIds = overlappingBookings
+          .map((booking) => booking.roomId)
+          .filter((roomId): roomId is string => roomId !== null);
+      } else {
+        propertyUnavailable = overlappingBookings.length > 0;
+      }
+    }
+
+    return NextResponse.json({
+      property,
+      unavailableRoomIds,
+      propertyUnavailable,
+    });
   } catch (error) {
     console.error(error);
 
