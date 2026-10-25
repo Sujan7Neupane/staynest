@@ -28,20 +28,20 @@ export default function HomeSearchForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="mt-10 flex max-w-3xl flex-col gap-3 sm:flex-row"
+      className="mt-10 flex max-w-3xl flex-col gap-3 sm:flex-row sm:items-end"
     >
       <FormInput
         label="Search"
         value={city}
         onChange={(e) => setCity(e.target.value)}
         placeholder="Search by city"
-        className="flex-1 rounded-lg border border-gray-300 px-4 py-3"
+        className="h-12 w-full rounded-lg border border-gray-300 px-4 sm:flex-1"
       />
 
       <select
         value={type}
         onChange={(e) => setType(e.target.value)}
-        className="rounded-sm border border-gray-300 px-2 py-2"
+        className="h-12 w-full rounded-lg border border-gray-300 bg-white px-4 sm:flex-1"
       >
         <option value="">All types</option>
         <option value="HOTEL">Hotel</option>
@@ -51,7 +51,7 @@ export default function HomeSearchForm({
       <Button
         type="submit"
         disabled={loading}
-        className="rounded-lg bg-blue-600 px-6 py-3 text-white hover:bg-blue-700 disabled:opacity-50"
+        className="h-12 w-full rounded-lg bg-blue-600 px-6 text-white hover:bg-blue-700 disabled:opacity-50 sm:flex-1"
       >
         {loading ? "Searching..." : "Search"}
       </Button>

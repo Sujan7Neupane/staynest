@@ -169,11 +169,23 @@ export async function POST(request: Request) {
       where: {
         propertyId,
         roomId: selectedRoomId,
-        status: {
-          in: ["PENDING", "CONFIRMED"],
+        OR: [
+          {
+            status: "CONFIRMED",
+          },
+          {
+            status: "PENDING",
+            holdExpiresAt: {
+              gt: new Date(),
+            },
+          },
+        ],
+        checkIn: {
+          lt: endDate,
         },
-        checkIn: { lt: endDate },
-        checkOut: { gt: startDate },
+        checkOut: {
+          gt: startDate,
+        },
       },
     });
 
@@ -194,6 +206,7 @@ export async function POST(request: Request) {
         pricePerNight,
         totalPrice,
         status: "PENDING",
+        holdExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
         paymentStatus: "PENDING",
         guestId: session.user.id,
         propertyId,

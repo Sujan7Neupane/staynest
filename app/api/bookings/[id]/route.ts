@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import prisma from "../../../../prisma/client";
-import { cancelBookingSchema } from "../../../../lib/zodValidations/booking";
 
 export async function GET(
   request: Request,
@@ -71,15 +70,7 @@ export async function PATCH(
 
   try {
     const { id } = await params;
-    const body = await request.json();
     // console.log(body);
-
-    const validation = cancelBookingSchema.safeParse(body);
-    // console.log(validation);
-
-    if (!validation.success) {
-      return NextResponse.json({ message: "Invalid request" }, { status: 400 });
-    }
 
     const booking = await prisma.booking.findFirst({
       where: { id, guestId: session.user.id },
@@ -100,6 +91,16 @@ export async function PATCH(
       );
     }
 
+    if (
+      booking.status === "PENDING" &&
+      (!booking.holdExpiresAt || booking.holdExpiresAt <= new Date())
+    ) {
+      return NextResponse.json(
+        { message: "The booking payment hold has expired" },
+        { status: 400 },
+      );
+    }
+
     const oneDay = 24 * 60 * 60 * 1000;
     const deadline =
       booking.checkIn.getTime() -
@@ -114,7 +115,7 @@ export async function PATCH(
 
     const updatedBooking = await prisma.booking.update({
       where: { id },
-      data: { status: validation.data.status },
+      data: { status: "CANCELLED" },
     });
 
     return NextResponse.json({ booking: updatedBooking });

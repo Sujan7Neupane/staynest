@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Property } from "../../lib/types/property";
 
 type PropertyListProps = {
@@ -21,9 +22,10 @@ export default function PropertyList({ properties }: PropertyListProps) {
   return (
     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {properties.map((property) => (
-        <article
+        <Link
           key={property.id}
-          className="overflow-hidden rounded-2xl border border-gray-200 bg-white transition hover:-translate-y-1 hover:shadow-lg"
+          href={`/properties/${property.id}`}
+          className="block overflow-hidden rounded-2xl border border-gray-200 bg-white transition hover:-translate-y-1 hover:shadow-lg"
         >
           <div className="h-56 bg-gray-100">
             {property.imageUrl ? (
@@ -63,7 +65,7 @@ export default function PropertyList({ properties }: PropertyListProps) {
               </p>
             </div>
           </div>
-        </article>
+        </Link>
       ))}
     </div>
   );

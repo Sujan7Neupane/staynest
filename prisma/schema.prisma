@@ -117,6 +117,7 @@ model Booking {
 
   status        BookingStatus @default(PENDING)
   paymentStatus PaymentStatus @default(PENDING)
+  holdExpiresAt DateTime?
 
   transactionUuid  String?   @unique
   paymentReference String?   @unique
