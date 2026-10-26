@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/auth";
 import prisma from "@/prisma/client";
+import Button from "../../../components/ui/Button";
 
 type BookingPageProps = {
   params: Promise<{ id: string }>;
@@ -24,6 +25,7 @@ async function BookingDetails({ params }: BookingPageProps) {
       room: true,
     },
   });
+  // console.log(booking);
 
   if (!booking) {
     notFound();
@@ -32,6 +34,11 @@ async function BookingDetails({ params }: BookingPageProps) {
   const isGuest = booking.guestId === session.user.id;
   const isHost = booking.property.hostId === session.user.id;
   const isAdmin = session.user.role === "ADMIN";
+
+  const nights = Math.ceil(
+    (booking.checkOut.getTime() - booking.checkIn.getTime()) /
+      (1000 * 60 * 60 * 24),
+  );
 
   if (!isGuest && !isHost && !isAdmin) {
     redirect("/");
@@ -90,6 +97,11 @@ async function BookingDetails({ params }: BookingPageProps) {
           <div>
             <p className="text-sm text-gray-500">Guests</p>
             <p className="font-medium">{booking.guests}</p>
+          </div>
+
+          <div>
+            <p className="text-sm text-gray-500">Nights</p>
+            <p className="font-medium">{nights}</p>
           </div>
         </div>
 

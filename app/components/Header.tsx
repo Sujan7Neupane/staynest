@@ -14,7 +14,7 @@ export default async function Header() {
 
         <div className="flex items-center gap-4 text-sm">
           <Link
-            href="/dashboard/guest"
+            href="/bookings"
             className="hidden text-gray-600 hover:text-black sm:block"
           >
             My Bookings
