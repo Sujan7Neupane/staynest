@@ -20,12 +20,12 @@ export default async function Header() {
             My Bookings
           </Link>
 
-          <Link
+          {/* <Link
             href="/dashboard/host"
             className="hidden text-gray-600 hover:text-black sm:block"
           >
             Become a Host
-          </Link>
+          </Link> */}
 
           <HeaderAccount userLabel={session?.user.name} />
         </div>

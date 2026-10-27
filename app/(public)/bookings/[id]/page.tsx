@@ -3,11 +3,26 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/auth";
 import prisma from "@/prisma/client";
-import Button from "../../../components/ui/Button";
+import EsewaPaymentButton from "../../../components/EsewaPaymentButton";
 
 type BookingPageProps = {
   params: Promise<{ id: string }>;
 };
+
+function formatDate(date: Date) {
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function formatPrice(price: { toString(): string }) {
+  return `Rs. ${Number(price.toString()).toLocaleString("en-NP", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
 
 async function BookingDetails({ params }: BookingPageProps) {
   const session = await auth();
@@ -25,7 +40,6 @@ async function BookingDetails({ params }: BookingPageProps) {
       room: true,
     },
   });
-  // console.log(booking);
 
   if (!booking) {
     notFound();
@@ -35,107 +49,172 @@ async function BookingDetails({ params }: BookingPageProps) {
   const isHost = booking.property.hostId === session.user.id;
   const isAdmin = session.user.role === "ADMIN";
 
+  if (!isGuest && !isHost && !isAdmin) {
+    redirect("/");
+  }
+
   const nights = Math.ceil(
     (booking.checkOut.getTime() - booking.checkIn.getTime()) /
       (1000 * 60 * 60 * 24),
   );
-
-  if (!isGuest && !isHost && !isAdmin) {
-    redirect("/");
-  }
 
   const canPay =
     isGuest &&
     booking.status === "PENDING" &&
     booking.paymentStatus === "PENDING";
 
+  const isPaid = booking.paymentStatus === "PAID";
+  const isConfirmed = booking.status === "CONFIRMED";
+
   return (
-    <main className="mx-auto max-w-3xl space-y-6 px-4 py-10">
-      <div>
-        <Link
-          href={`/properties/${booking.propertyId}`}
-          className="text-sm text-gray-600 hover:text-black"
-        >
-          ← Back to property
-        </Link>
+    <main className="mx-auto max-w-6xl px-4 py-10">
+      <Link
+        href={`/bookings`}
+        className="text-sm text-gray-600 hover:text-black"
+      >
+        &larr; Back to property
+      </Link>
 
-        <h1 className="mt-4 text-3xl font-semibold">Booking details</h1>
+      <h1 className="mb-2 mt-4 text-3xl font-bold">Booking Confirmation</h1>
 
-        <p className="mt-2 text-sm text-gray-500">Booking ID: {booking.id}</p>
+      <p className="mb-8 text-gray-600">
+        Review the details of your stay and payment.
+      </p>
+
+      <div className="grid gap-8 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          <section className="rounded-xl border border-gray-200 p-6">
+            <h2 className="mb-4 text-xl font-semibold">Booking Information</h2>
+
+            <div className="space-y-3 text-gray-700">
+              <p className="break-all">
+                <span className="font-medium">Booking ID:</span> {booking.id}
+              </p>
+
+              <p>
+                <span className="font-medium">Booking Date:</span>{" "}
+                {formatDate(booking.createdAt)}
+              </p>
+
+              <p>
+                <span className="font-medium">Booking Status:</span>{" "}
+                <span
+                  className={`rounded px-2 py-1 text-sm ${
+                    isConfirmed
+                      ? "bg-green-100 text-green-700"
+                      : "bg-yellow-100 text-yellow-700"
+                  }`}
+                >
+                  {booking.status.replaceAll("_", " ")}
+                </span>
+              </p>
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-gray-200 p-6">
+            <h2 className="mb-4 text-xl font-semibold">Stay Details</h2>
+
+            <h3 className="text-lg font-semibold">{booking.property.title}</h3>
+
+            <p className="mt-1 text-gray-600">
+              {booking.property.address}, {booking.property.city},{" "}
+              {booking.property.country}
+            </p>
+
+            {booking.room && (
+              <p className="mt-3">
+                <span className="font-medium">Room:</span> {booking.room.name}{" "}
+                (Room {booking.room.roomNumber})
+              </p>
+            )}
+
+            <div className="mt-5 grid grid-cols-2 gap-5">
+              <div>
+                <p className="text-sm text-gray-500">Check-in</p>
+                <p className="font-medium">{formatDate(booking.checkIn)}</p>
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-500">Check-out</p>
+                <p className="font-medium">{formatDate(booking.checkOut)}</p>
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-500">Guests</p>
+                <p className="font-medium">{booking.guests}</p>
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-500">Nights</p>
+                <p className="font-medium">{nights}</p>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-gray-200 p-6">
+            <h2 className="mb-4 text-xl font-semibold">Payment Status</h2>
+
+            <p className="mb-3 text-gray-700">Payment method: eSewa</p>
+
+            <span
+              className={`rounded px-3 py-1 text-sm ${
+                isPaid
+                  ? "bg-green-100 text-green-700"
+                  : "bg-yellow-100 text-yellow-700"
+              }`}
+            >
+              {booking.paymentStatus}
+            </span>
+
+            {canPay && (
+              <p className="mt-4 text-sm text-gray-600">
+                Complete your payment to confirm your booking.
+              </p>
+            )}
+          </section>
+        </div>
+
+        <aside className="h-fit rounded-xl border border-gray-200 p-6">
+          <h2 className="mb-5 text-xl font-semibold">Booking Summary</h2>
+
+          <div className="space-y-4">
+            <div className="flex justify-between gap-4">
+              <span className="text-gray-600">Guests</span>
+              <span>{booking.guests}</span>
+            </div>
+
+            <div className="flex justify-between gap-4">
+              <span className="text-gray-600">Nights</span>
+              <span>{nights}</span>
+            </div>
+
+            <div className="flex justify-between gap-4">
+              <span className="text-gray-600">Price per night</span>
+              <span>{formatPrice(booking.pricePerNight)}</span>
+            </div>
+
+            <hr className="border-gray-200" />
+
+            <div className="flex justify-between gap-4 text-lg font-bold">
+              <span>Total</span>
+              <span>{formatPrice(booking.totalPrice)}</span>
+            </div>
+          </div>
+
+          {canPay ? (
+            <div className="mt-6">
+              <EsewaPaymentButton bookingId={booking.id} />
+            </div>
+          ) : (
+            <Link
+              href="/"
+              className="mt-6 block w-full rounded-lg bg-black px-4 py-3 text-center font-medium text-white transition hover:bg-gray-800"
+            >
+              Back to homepage
+            </Link>
+          )}
+        </aside>
       </div>
-
-      <section className="space-y-4 rounded-xl border border-gray-200 p-6">
-        <h2 className="text-xl font-semibold">{booking.property.title}</h2>
-
-        <p className="text-gray-600">
-          {booking.property.address}, {booking.property.city},{" "}
-          {booking.property.country}
-        </p>
-
-        {booking.room && (
-          <p>
-            <span className="font-medium">Room:</span> {booking.room.name} (Room{" "}
-            {booking.room.roomNumber})
-          </p>
-        )}
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm text-gray-500">Check-in</p>
-            <p className="font-medium">
-              {booking.checkIn.toLocaleDateString()}
-            </p>
-          </div>
-
-          <div>
-            <p className="text-sm text-gray-500">Check-out</p>
-            <p className="font-medium">
-              {booking.checkOut.toLocaleDateString()}
-            </p>
-          </div>
-
-          <div>
-            <p className="text-sm text-gray-500">Guests</p>
-            <p className="font-medium">{booking.guests}</p>
-          </div>
-
-          <div>
-            <p className="text-sm text-gray-500">Nights</p>
-            <p className="font-medium">{nights}</p>
-          </div>
-        </div>
-
-        <hr className="border-gray-200" />
-
-        <div className="flex justify-between">
-          <span>Price per night</span>
-          <span>Rs. {booking.pricePerNight.toString()}</span>
-        </div>
-
-        <div className="flex justify-between text-lg font-semibold">
-          <span>Total price</span>
-          <span>Rs. {booking.totalPrice.toString()}</span>
-        </div>
-      </section>
-
-      <section className="rounded-xl border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold">Booking status</h2>
-
-        <p className="mt-2">
-          Booking: <span className="font-medium">{booking.status}</span>
-        </p>
-
-        <p className="mt-1">
-          Payment: <span className="font-medium">{booking.paymentStatus}</span>
-        </p>
-
-        {canPay && (
-          <p className="mt-4 text-sm text-gray-600">
-            Your booking is pending payment. We will add the eSewa payment
-            option here next.
-          </p>
-        )}
-      </section>
     </main>
   );
 }
@@ -144,7 +223,7 @@ export default function BookingPage({ params }: BookingPageProps) {
   return (
     <Suspense
       fallback={
-        <main className="mx-auto max-w-3xl px-4 py-10">
+        <main className="mx-auto max-w-6xl px-4 py-10">
           Loading booking details...
         </main>
       }

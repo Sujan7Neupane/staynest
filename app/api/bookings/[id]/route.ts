@@ -7,6 +7,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await auth();
+  console.log(session);
 
   if (!session?.user) {
     return NextResponse.json(
