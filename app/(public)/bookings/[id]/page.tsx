@@ -4,6 +4,7 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import prisma from "@/prisma/client";
 import EsewaPaymentButton from "../../../components/EsewaPaymentButton";
+import CancelBookingButton from "../../../components/CancelBookingButton";
 
 type BookingPageProps = {
   params: Promise<{ id: string }>;
@@ -59,6 +60,11 @@ async function BookingDetails({ params }: BookingPageProps) {
   );
 
   const canPay =
+    isGuest &&
+    booking.status === "PENDING" &&
+    booking.paymentStatus === "PENDING";
+
+  const canCancel =
     isGuest &&
     booking.status === "PENDING" &&
     booking.paymentStatus === "PENDING";
@@ -201,11 +207,19 @@ async function BookingDetails({ params }: BookingPageProps) {
             </div>
           </div>
 
-          {canPay ? (
+          {canPay && (
             <div className="mt-6">
               <EsewaPaymentButton bookingId={booking.id} />
             </div>
-          ) : (
+          )}
+
+          {canCancel && (
+            <div className={canPay ? "mt-3" : "mt-6"}>
+              <CancelBookingButton bookingId={booking.id} />
+            </div>
+          )}
+
+          {!canPay && !canCancel && (
             <Link
               href="/"
               className="mt-6 block w-full rounded-lg bg-black px-4 py-3 text-center font-medium text-white transition hover:bg-gray-800"
