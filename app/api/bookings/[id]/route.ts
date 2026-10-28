@@ -25,6 +25,11 @@ export async function GET(
         property: true,
         room: true,
         guest: { select: { id: true, name: true, email: true } },
+        review: {
+          select: {
+            id: true,
+          },
+        },
       },
     });
 

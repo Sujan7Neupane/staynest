@@ -28,6 +28,7 @@ model User {
 
   properties Property[]
   bookings   Booking[]
+  reviews    Review[]
 }
 
 enum PropertyType {
@@ -69,6 +70,7 @@ model Property {
 
   bookings Booking[]
   rooms    Room[]
+  reviews  Review[]
 }
 
 enum BookingStatus {
@@ -139,4 +141,24 @@ model Booking {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  review    Review?
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  guestId    String
+  propertyId String
+  bookingId  String @unique
+
+  guest    User     @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  booking  Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@index([guestId])
 }

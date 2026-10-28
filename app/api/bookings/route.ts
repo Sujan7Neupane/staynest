@@ -54,6 +54,11 @@ export async function GET() {
             email: true,
           },
         },
+        review: {
+          select: {
+            id: true,
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",

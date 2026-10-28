@@ -2,6 +2,7 @@ import Link from "next/link";
 import prisma from "@/prisma/client";
 import Button from "../ui/Button";
 import BookingForm from "./BookingForm";
+import Reviews from "./Review";
 
 type PropertyDetailsProps = {
   id: string;
@@ -127,6 +128,8 @@ export default async function PropertyDetails({ id }: PropertyDetailsProps) {
               {property.description}
             </p>
           </section>
+
+          <Reviews propertyId={property.id} />
         </div>
 
         <aside className="h-fit rounded-2xl border border-gray-200 p-6">
