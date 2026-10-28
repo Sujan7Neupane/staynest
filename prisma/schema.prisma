@@ -14,15 +14,20 @@ enum UserRole {
 }
 
 model User {
-  id           String     @id @default(cuid())
+  id           String   @id @default(cuid())
   name         String
-  email        String     @unique
+  email        String   @unique
   passwordHash String
   role         UserRole
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  properties   Property[]
-  bookings     Booking[]
+
+  profileImageUrl      String?
+  profileImagePublicId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  properties Property[]
+  bookings   Booking[]
 }
 
 enum PropertyType {

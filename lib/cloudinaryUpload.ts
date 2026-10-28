@@ -5,7 +5,7 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const ALLOWED_EXTENSIONS = ["jpg", "jpeg", "png", "webp"];
 const MAX_SIZE_MB = 5;
 
-const cloudinaryUpload = async (file: File) => {
+const cloudinaryUpload = async (file: File, folder = "staynest/properties") => {
   if (!file || file.size === 0) {
     throw new Error("Please select an image");
   }
@@ -33,7 +33,7 @@ const cloudinaryUpload = async (file: File) => {
 
     const uploadResponse = await cloudinary.uploader.upload(dataUri, {
       resource_type: "image",
-      folder: "staynest/properties",
+      folder,
     });
 
     return uploadResponse;
